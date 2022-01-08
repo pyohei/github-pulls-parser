@@ -5,10 +5,6 @@ import time
 import click
 import requests
 
-EXPORT_DIRECTORY = "export"
-PULL_DIRECTORY = f"{EXPORT_DIRECTORY}/pulls"
-REVIEW_DIRECTORY = f"{EXPORT_DIRECTORY}/reviews"
-
 
 @click.command()
 @click.option("--token", required=True, help="GitHub Personal token")
@@ -16,9 +12,15 @@ REVIEW_DIRECTORY = f"{EXPORT_DIRECTORY}/reviews"
 @click.option("--repo", required=True, help="GitHub repository.")
 @click.option("--start-page", required=False, default=1, help="Start page.")
 @click.option("--end-page", required=False, default=1, help="End page.")
-def main(token, owner, repo, start_page, end_page):
-    os.makedirs(PULL_DIRECTORY, exist_ok=True)
-    os.makedirs(REVIEW_DIRECTORY, exist_ok=True)
+@click.option("--export-dir", required=False, default=None, help="Export directory")
+def main(token, owner, repo, start_page, end_page, export_dir):
+    if not export_dir:
+        export_dir = repo
+    pull_directory = f"export/{export_dir}/pulls"
+    review_directory = f"export/{export_dir}/reviews"
+
+    os.makedirs(pull_directory, exist_ok=True)
+    os.makedirs(review_directory, exist_ok=True)
 
     pull_url = f"https://api.github.com/repos/{owner}/{repo}/pulls"
     headers = {
@@ -35,7 +37,7 @@ def main(token, owner, repo, start_page, end_page):
         params["page"] = n
         response = requests.get(pull_url, params=params, headers=headers)
         pulls = response.json()
-        with open(f"{PULL_DIRECTORY}/{str(n)}.json", "w") as f:
+        with open(f"{pull_directory}/{str(n)}.json", "w") as f:
             f.write(json.dumps(pulls, indent=2))
         print(pull_url)
         time.sleep(1)
@@ -46,7 +48,7 @@ def main(token, owner, repo, start_page, end_page):
             review_url = f'https://api.github.com/repos/{owner}/{repo}/pulls/{pull["number"]}/reviews?per_page=100&page=1'
             response = requests.get(review_url, headers=headers)
             reviews = response.json()
-            with open(f'{REVIEW_DIRECTORY}/{str(pull["number"])}.json', "w") as f:
+            with open(f'{review_directory}/{str(pull["number"])}.json', "w") as f:
                 f.write(json.dumps(reviews, indent=2))
             print(review_url.split("?")[0])
             time.sleep(3)
